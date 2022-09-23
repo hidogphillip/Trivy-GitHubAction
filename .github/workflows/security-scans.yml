@@ -1,25 +1,33 @@
-name: build
+name: Security Scans
+
 on:
   push:
-    branches:
-      - master
+    branches: [ "main" ]
   pull_request:
+    branches: [ "main" ]
+
+
 jobs:
   build:
-    name: Build
+    name: build
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Build an image from Dockerfile
-        run: |
-          docker build -t docker.io/my-organization/my-app:${{ github.sha }} .
-      - name: Run Trivy vulnerability scanner
+        uses: actions/checkout@v3
+
+      - name: Run static analysis
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'docker.io/my-organization/my-app:${{ github.sha }}'
-          format: 'table'
-          exit-code: '1'
+          scan-type: 'fs'
+          security-checks: 'vuln,secret,config'
           ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL'
+
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'code'
